@@ -10,7 +10,7 @@ En la segunda seccion esta la muestra de uso, en donde se encuentran distintos r
 
 <h3 align="center">Este proyecto posee las siguientes caracteristicas</h3>
 
-- 📝 Poder configurar, si desea un constrate de un color o una paleta de colores
+-  Poder configurar, si desea un constrate de un color o una paleta de colores
 
 - 🌱 Creacion de una paleta de colores, a traves de la seleccion de un solo color
 
