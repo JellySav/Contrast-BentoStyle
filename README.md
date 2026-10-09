@@ -1,28 +1,28 @@
-# Contrast-BentoStyle
+# Contrast Bento
 
-<h3 align="center">Hola 👋, Este es uno de mis proyectos finales del año.</h3> Es un sitio web sobre la creacion de constraste de colores, este en un estilo bento; esto a traves de muestras de colores en espacios, formas y fondos. Ademas de recomendaciones sobre formas y tipografias
+Aplicación interactiva para explorar colores y paletas, comprobar contraste de texto según WCAG y ver combinaciones en una muestra de interfaz Bento.
 
-<h3 align="center"> Descripcion:</h3>
+## Funciones
 
-Esta divido en dos secciones, la primera es la eleccion y configuracion de lo que se busca; en el lado derecho es posible elegir un solo color o una paleta de colores para el constraste; en el medio esta un espacio de eleccion de colores o agregar una imagen y poder seleccionar alguno a traves de un gotero, ademas de poder oobtener un color al azar o utilizar la IA para obtener un buen color o paleta de colores; y por ultimo en el lado izquierdo se encuentra en porcentajes en donde se muestrara un porcentaje bueno o malo dependiendo del colores seleccionado. 
+- Comparación entre color de texto y fondo con ratios y criterios WCAG AA/AAA.
+- Edición de colores mediante selector nativo o código hexadecimal.
+- Paleta editable, con opción de añadir y retirar colores.
+- Captura de color con EyeDropper API cuando el navegador la admite.
+- Extracción de un color promedio desde una imagen local.
+- Generación de armonías de color a partir del tono seleccionado.
+- Previsualización de interfaz, formas, tipografía y degradados CSS.
 
-En la segunda seccion esta la muestra de uso, en donde se encuentran distintos rectangulos de como se veria el color o la paleta de colores, en publicaciones, formas, y en los ultimos dos rectangulos un espacio de recomendaciones con IA sobre tipografias y formas y degradentes ideales para la paleta de colores seleccionada. 
+## Ejecutar
 
-<h3 align="center">Este proyecto posee las siguientes caracteristicas</h3>
+Requiere Node.js 18 o posterior.
 
--  Poder configurar, si desea un constrate de un color o una paleta de colores
+```bash
+npm install
+npm run dev
+```
 
-- 🌱 Creacion de una paleta de colores, a traves de la seleccion de un solo color
+Vite escucha en `0.0.0.0:5173`; abre `http://localhost:5173` en el navegador. Para producción, usa `npm run build` y `npm run preview`.
 
-- 👨‍💻 Espacio para ver de que forma se ve estos colores en el fondo de una pagina
+## Recomendaciones de color
 
-- 💬 Una puntuacion, para descubrir si su color, es un buen constraste para su sitio web
-
-- 📫 Revision de constraste en escritura, y especificiacion de tipografias posibles
-
-- 📄 Utilizacion de IA, para generar una paleta de colores 
-
-<h3 align="left">Lo utilizado:</h3>
-
-
-<h3 align="left">Puedes revisarlo aqui:</h3>
+La sugerencia de armonía y las recomendaciones de contraste se calculan localmente con reglas de color y WCAG. No hay una API de IA conectada; para integrar un proveedor de IA se necesitaría definir un servicio y gestionar las credenciales fuera del cliente.

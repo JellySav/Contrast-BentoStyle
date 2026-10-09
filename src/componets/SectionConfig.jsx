@@ -1,6 +1,6 @@
-import React from 'react';
-import { calculateContrast } from '../utils/contrast';
-import { Pipette, Sparkles, Shuffle, Upload } from 'lucide-react';
+import React, { useState } from 'react';
+import { calculateContrast, generateHarmonyPalette, isValidHex } from '../utils/contrast';
+import { Pipette, Sparkles, Shuffle, Upload, Plus } from 'lucide-react';
 
 export default function SectionConfig({ 
   mode, setMode, 
@@ -8,6 +8,7 @@ export default function SectionConfig({
   backgroundColor, setBackgroundColor,
   palette, setPalette 
 }) {
+  const [notice, setNotice] = useState('');
   const contrastInfo = calculateContrast(primaryColor, backgroundColor);
 
   // Selector de color del navegador (EyeDropper API si está disponible)
@@ -17,30 +18,77 @@ export default function SectionConfig({
       try {
         const result = await eyeDropper.open();
         setPrimaryColor(result.sRGBHex);
+        setNotice(`Color capturado: ${result.sRGBHex.toUpperCase()}`);
       } catch (e) {
-        console.log('Gotero cancelado');
+        if (e.name !== 'AbortError') setNotice('No se pudo capturar el color.');
       }
     } else {
-      alert('Tu navegador no soporta la API de Gotero directo.');
+        setNotice('El gotero requiere un navegador compatible.');
     }
   };
 
   const handleRandomColor = () => {
     const randomHex = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
     setPrimaryColor(randomHex);
+    setNotice(`Color aleatorio: ${randomHex.toUpperCase()}`);
   };
 
   const handleAIGenerate = () => {
-    // Simulación de IA (Aquí puedes conectar la API de OpenAI / Gemini)
-    const aiPalettes = [
-      ['#00F2FE', '#4FACFE', '#000000', '#FFFFFF'],
-      ['#FF0844', '#FFB199', '#1E1E24', '#FFF8F0'],
-      ['#F12711', '#F5AF19', '#111827', '#F9FAFB']
-    ];
-    const picked = aiPalettes[Math.floor(Math.random() * aiPalettes.length)];
-    setPrimaryColor(picked[0]);
-    setBackgroundColor(picked[2]);
-    setPalette(picked);
+    if (!isValidHex(primaryColor)) {
+      setNotice('Introduce un color hexadecimal válido para generar una armonía.');
+      return;
+    }
+
+    const suggestedPalette = generateHarmonyPalette(primaryColor);
+    const lightContrast = Number(calculateContrast(suggestedPalette[0], '#FFFFFF').ratio);
+    const darkContrast = Number(calculateContrast(suggestedPalette[0], '#111827').ratio);
+    setPalette(suggestedPalette);
+    setBackgroundColor(lightContrast >= darkContrast ? '#FFFFFF' : '#111827');
+    setMode('palette');
+    setNotice('Armonía sugerida con reglas de color locales; no se conecta a una API de IA.');
+  };
+
+  const handleImageUpload = async (event) => {
+    const imageFile = event.target.files?.[0];
+    if (!imageFile) return;
+
+    let image;
+    try {
+      image = await createImageBitmap(imageFile);
+      const canvas = document.createElement('canvas');
+      canvas.width = 32;
+      canvas.height = 32;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) throw new Error('Canvas no disponible');
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const totals = [0, 0, 0];
+      for (let index = 0; index < pixels.length; index += 4) {
+        totals[0] += pixels[index];
+        totals[1] += pixels[index + 1];
+        totals[2] += pixels[index + 2];
+      }
+      const pixelCount = pixels.length / 4;
+      const [red, green, blue] = totals.map((total) => Math.round(total / pixelCount));
+      const sampledColor = `#${[red, green, blue].map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+      setPrimaryColor(sampledColor);
+      setNotice(`Muestra promedio de la imagen: ${sampledColor.toUpperCase()}`);
+    } catch {
+      setNotice('No se pudo leer la imagen. Prueba con otro archivo.');
+    } finally {
+      image?.close();
+      event.target.value = '';
+    }
+  };
+
+  const addCurrentColor = () => {
+    if (!isValidHex(primaryColor) || palette.length >= 8) return;
+    if (palette.some((color) => color.toLowerCase() === primaryColor.toLowerCase())) {
+      setNotice('Ese color ya está en la paleta.');
+      return;
+    }
+    setPalette([...palette, primaryColor.toUpperCase()]);
+    setNotice('Color añadido a la paleta.');
   };
 
   return (
@@ -48,18 +96,21 @@ export default function SectionConfig({
       {/* IZQUIERDA: Puntuación & Porcentaje */}
       <div className="flex flex-col justify-between p-6 bg-slate-800/50 rounded-2xl border border-slate-700/50">
         <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Puntuación WCAG</span>
-          <h2 className="text-5xl font-black mt-2 text-white">{contrastInfo.percentage}%</h2>
-          <p className="text-sm font-medium mt-1 text-indigo-400">{contrastInfo.score}</p>
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Contraste WCAG</span>
+          <h2 className="text-5xl font-black mt-2 text-white">{contrastInfo.ratio ? `${contrastInfo.ratio}:1` : '--'}</h2>
+          <p className={`text-sm font-medium mt-1 ${contrastInfo.normalAA ? 'text-emerald-400' : 'text-amber-300'}`}>
+            {!contrastInfo.ratio ? 'Hexadecimal no válido' : contrastInfo.normalAA ? 'Texto normal: cumple AA' : 'Texto normal: no cumple AA'}
+          </p>
         </div>
-        <div className="mt-6 pt-4 border-t border-slate-700/50 text-xs text-slate-400">
-          Ratio: <span className="text-white font-mono">{contrastInfo.ratio}:1</span>
+        <div className="mt-6 pt-4 border-t border-slate-700/50 space-y-2 text-xs text-slate-400">
+          <p className="flex justify-between">AA texto grande <span className={contrastInfo.largeAA ? 'text-emerald-400' : 'text-slate-500'}>{contrastInfo.largeAA ? 'Cumple' : 'No cumple'}</span></p>
+          <p className="flex justify-between">AAA texto normal <span className={contrastInfo.aaa ? 'text-emerald-400' : 'text-slate-500'}>{contrastInfo.aaa ? 'Cumple' : 'No cumple'}</span></p>
         </div>
       </div>
 
       {/* CENTRO: Gotero, Imagen, Random & IA */}
       <div className="flex flex-col justify-between space-y-4 p-6 bg-slate-800/50 rounded-2xl border border-slate-700/50">
-        <h3 className="text-sm font-semibold text-slate-300">Generación y Captura</h3>
+        <h3 className="text-sm font-semibold text-slate-300">Herramientas de color</h3>
         
         <div className="grid grid-cols-2 gap-3">
           <button 
@@ -75,16 +126,17 @@ export default function SectionConfig({
           </button>
         </div>
 
-        <button 
+          <button 
           onClick={handleAIGenerate}
-          className="w-full flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold rounded-xl text-sm transition shadow-lg shadow-indigo-500/20">
-          <Sparkles size={18} /> Generar con IA
+          className="w-full flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold rounded-xl text-sm transition shadow-lg shadow-blue-500/20">
+          <Sparkles size={18} /> Sugerir armonía
         </button>
 
         <label className="flex items-center justify-center gap-2 p-2 border border-dashed border-slate-600 hover:border-slate-400 rounded-xl text-xs text-slate-400 cursor-pointer transition">
-          <Upload size={14} /> Cargar imagen para muestra
-          <input type="file" accept="image/*" className="hidden" />
+          <Upload size={14} /> Extraer color de imagen
+          <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
         </label>
+        <p role="status" aria-live="polite" className="min-h-8 text-xs text-slate-400">{notice}</p>
       </div>
 
       {/* DERECHA: Configuración (1 color vs Paleta) */}
@@ -109,7 +161,7 @@ export default function SectionConfig({
               <div className="flex gap-2">
                 <input 
                   type="color" 
-                  value={primaryColor} 
+                  value={isValidHex(primaryColor) ? primaryColor : '#000000'} 
                   onChange={(e) => setPrimaryColor(e.target.value)}
                   className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-0" 
                 />
@@ -117,6 +169,8 @@ export default function SectionConfig({
                   type="text" 
                   value={primaryColor} 
                   onChange={(e) => setPrimaryColor(e.target.value)}
+                  aria-label="Código hexadecimal del color principal"
+                  aria-invalid={!isValidHex(primaryColor)}
                   className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 text-sm font-mono text-white" 
                 />
               </div>
@@ -127,7 +181,7 @@ export default function SectionConfig({
               <div className="flex gap-2">
                 <input 
                   type="color" 
-                  value={backgroundColor} 
+                  value={isValidHex(backgroundColor) ? backgroundColor : '#000000'} 
                   onChange={(e) => setBackgroundColor(e.target.value)}
                   className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-0" 
                 />
@@ -135,11 +189,40 @@ export default function SectionConfig({
                   type="text" 
                   value={backgroundColor} 
                   onChange={(e) => setBackgroundColor(e.target.value)}
+                  aria-label="Código hexadecimal del fondo"
+                  aria-invalid={!isValidHex(backgroundColor)}
                   className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 text-sm font-mono text-white" 
                 />
               </div>
             </div>
           </div>
+
+          {mode === 'palette' && (
+            <div className="mt-5 border-t border-slate-700/50 pt-4">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Colores de la paleta</span>
+                <button onClick={addCurrentColor} disabled={!isValidHex(primaryColor) || palette.length >= 8} className="flex items-center gap-1 text-xs text-cyan-300 disabled:text-slate-600">
+                  <Plus size={14} /> Añadir actual
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {palette.map((color, index) => (
+                  <div key={`${color}-${index}`} className="flex items-center gap-1 rounded-lg bg-slate-900 p-1">
+                    <button onClick={() => setPrimaryColor(color)} title={`Usar ${color}`} aria-label={`Seleccionar ${color}`} className={`h-7 w-7 rounded-md border-2 ${color.toLowerCase() === primaryColor.toLowerCase() ? 'border-white' : 'border-transparent'}`} style={{ backgroundColor: color }} />
+                    <button
+                      onClick={() => setPalette(palette.filter((_, colorIndex) => colorIndex !== index))}
+                      disabled={palette.length <= 1}
+                      title={`Quitar ${color} de la paleta`}
+                      aria-label={`Quitar ${color} de la paleta`}
+                      className="px-1 text-xs text-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </section>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import SectionConfig from './components/SectionConfig';
-import SectionBento from './components/SectionBento';
+import SectionConfig from './componets/SectionConfig';
+import SectionBento from './componets/SectionBento';
 
 export default function App() {
   const [mode, setMode] = useState('single'); // 'single' o 'palette'
@@ -14,8 +14,8 @@ export default function App() {
         <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-400 to-pink-500 bg-clip-text text-transparent">
           Contrast-BentoStyle 
         </h1>
-        <p className="text-slate-400 mt-2">
-          Herramienta de análisis de contraste, Bento Grid visual e recomendaciones con IA.
+        <p className="mt-2 max-w-2xl text-slate-400">
+          Analiza contraste WCAG, prueba una paleta en contexto y genera armonías de color con reglas locales.
         </p>
       </header>
 
@@ -34,6 +34,7 @@ export default function App() {
 
         {/* Sección 2: Bento Grid / Muestra de Uso */}
         <SectionBento 
+            mode={mode}
           primaryColor={primaryColor}
           backgroundColor={backgroundColor}
           palette={palette}
